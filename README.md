@@ -163,89 +163,82 @@ Simulates longitudinal riverbed aggradation, degradation, and bedform migration 
 * **Sub-module 2.5: Morphological Stability Controller** — Dynamically regulates $\Delta t$ via hydraulic and morphological CFL criteria and applies the Morphological Acceleration Factor ($M_f$).
 
 * **Sub-module 2.6: State-Space Persister** — Decimates temporal frames for WebGL playback and packages `.parquet` state tensors into `.zip` bundles.
+---
 
-#### Governing Formulations:
+## 🏗️ System Architecture & Multi-Scale Pipelines
 
-* **1D Saint-Venant Continuity & Momentum Equations:**
-  
+The workstation is partitioned into three coupled physical scales. Each scale operates as a single unified view in the UI while executing a 6-stage vectorized pipeline in the backend:
 
-  $$
-  \frac{\partial h}{\partial t} + \frac{\partial (uh)}{\partial x} = 0, \qquad \frac{\partial (uh)}{\partial t} + \frac{\partial}{\partial x}\left(u^2 h + \frac{1}{2} g h^2\right) = -g h \frac{\partial z_b}{\partial x} - g h S_f
-  $$
+### 1. Micro-Scale: `Benthic-Boundary Engine`
+Resolves near-bed turbulent boundary-layer kinematics and vertical suspended-sediment concentration profiles:
+* **Sub-module 1.1 — Near-Bed Kinematics:** Computes shear velocity (`u*`) and logarithmic velocity profiles via the Law of the Wall.
+* **Sub-module 1.2 — Viscous Sublayer Diagnostics:** Classifies hydraulically smooth, transitional, and rough regimes using boundary Reynolds number (`Re*`) and viscous sublayer thickness (`δ_v`).
+* **Sub-module 1.3 — Particle Settling & Entrainment:** Evaluates terminal settling velocity (`w_s`) and near-bed reference concentration (`C_a`) via the Garcia–Parker entrainment formulation.
+* **Sub-module 1.4 — Turbulent Eddy Diffusivity Solver:** Computes the vertical parabolic turbulent mixing profile (`ε_s(z)`) via the Reynolds analogy.
+* **Sub-module 1.5 — Suspension ODE Integrator:** Solves both the analytical Rouse concentration distribution and the numerical 1D advection–diffusion ODE across the water column.
+* **Sub-module 1.6 — Macroscopic Flux Aggregator:** Performs zero-loop numerical quadrature of `u(z) · C(z)` to yield total unit suspended load (`q_ss`).
 
-* **Basal Shear Stress, Shields Parameter & Meyer-Peter Müller Bedload:**
-  
+### 2. Meso-Scale: `Exner Morphodynamics Engine`
+Simulates 1D unsteady open-channel hydraulics coupled with shock-capturing riverbed evolution:
+* **Sub-module 2.1 — Hydrodynamic State Solver:** Solves 1D Saint-Venant continuity and momentum equations for water depth (`h`), velocity (`u`), free-surface elevation (`η_w`), and Froude number (`Fr`).
+* **Sub-module 2.2 — Boundary Condition Manager:** Enforces ghost-cell padding, upstream inflow hydrographs (`Q`), and downstream stage boundaries without spatial loops.
+* **Sub-module 2.3 — Basal Shear & Transport Capacity Engine:** Computes bed shear stress (`τ_b`), dimensionless Shields parameter (`θ`), and Meyer-Peter & Müller (MPM) volumetric bedload flux (`q_b`).
+* **Sub-module 2.4 — Bed-Evolution Divergence Solver:** Advances riverbed elevation (`z_b`) using a second-order MacCormack Predictor–Corrector scheme with artificial dissipation and machine-epsilon mass-balance auditing (`~10⁻¹⁵` relative error).
+* **Sub-module 2.5 — Morphological Stability Controller:** Dynamically regulates time-stepping (`Δt`) via the Courant–Friedrichs–Lewy (`CFL`) condition and morphological acceleration factor (`M_f`).
+* **Sub-module 2.6 — State-Space Persister:** Decimates temporal frames for 60-FPS WebGL animation and serializes state tensors into compressed PyArrow `.parquet` and `.zip` archives.
 
-  $$
-  \tau_b = \frac{\rho_w g n^2 u^2}{h^{1/3}}, \qquad \theta = \frac{\tau_b}{(\rho_s - \rho_w) g d_{50}}, \qquad q_b = \alpha_{\text{mpm}} \sqrt{R_g g d_{50}^3} \max\left(0,\, \theta - \theta_c\right)^{\beta_{\text{mpm}}}
-  $$
+### 3. Macro-Scale: `MorphoTensor Engine` (3D Debris & Mudflow Rheology)
+Models hyperconcentrated non-Newtonian mudflows and yield-stress continuum mechanics:
+* **Sub-module 3.1 — Mixture Rheology Configurator:** Defines Bingham Plastic and Herschel–Bulkley yield stress (`τ_y`), consistency (`K`), and power-law index (`n_r`).
+* **Sub-module 3.2 — 3D Stress Tensor Generator:** Partitions isotropic pressure and deviatoric viscous stress tensors (`σ_ij`) using regularized second invariants of the strain-rate tensor (`II_D`).
+* **Sub-module 3.3 — Non-Newtonian Flux Router:** Computes vectorized 3D mass and momentum flux divergence across variable topography.
+* **Sub-module 3.4 — Transverse Gravity–Shear Coupler:** Resolves bi-directional slope gravity driving forces against basal and internal shear resistance.
+* **Sub-module 3.5 — Yield-Surface Tracker:** Identifies the dynamic interface (`h_p`) separating the upper rigid plug-flow zone (`|τ| ≤ τ_y`) from the lower sheared zone (`|τ| > τ_y`).
+* **Sub-module 3.6 — 3D Morphological Updater:** Updates volumetric deposition and erosion fields across the macroscopic domain.
 
-* **1D Exner Morphodynamic Conservation Equation:**
-  
+---
 
-  $$
-  (1 - \lambda_p) \frac{\partial z_b}{\partial t} + M_f \frac{\partial q_b}{\partial x} = 0
-  $$
+## 📐 Governing Continuum Equations
 
-* **MacCormack Predictor-Corrector Discretization (with Artificial Viscosity** $D_i$**):**
-  
+### I. Micro-Scale (`Benthic-Boundary`)
 
-  $$
-  z_{b,i}^* = z_{b,i}^n - \frac{M_f \Delta t}{(1 - \lambda_p) \Delta x} \left(q_{b,i+1}^n - q_{b,i}^n\right) + D_i^n
-  $$
+| Physical Mechanism | Governing Formulation | Key Variables & SI Units |
+| :--- | :--- | :--- |
+| **Law of the Wall** | `u(z) = (u* / κ) · ln(z / z₀)` | `u*`: Shear velocity (`m/s`), `κ`: von Kármán constant (`-`), `z₀`: Zero-velocity roughness height (`m`) |
+| **Shear Reynolds & Sublayer** | `Re* = (u* · k_s) / ν` &nbsp;\|&nbsp; `δ_v = 11.6 · (ν / u*)` | `k_s`: Nikuradse roughness (`m`), `ν`: Kinematic viscosity (`m²/s`), `δ_v`: Viscous sublayer (`m`) |
+| **Garcia–Parker Entrainment** | `E_s = (A · Z_u⁵) / (1 + (A / 0.3) · Z_u⁵)` | `A = 1.3 × 10⁻⁷`, `Z_u`: Similarity variable (`-`), `C_a = E_s`: Reference concentration (`-`) |
+| **Parabolic Eddy Diffusivity** | `ε_s(z) = β_s · κ · u* · z · (1 - z / h)` | `ε_s`: Turbulent sediment diffusivity (`m²/s`), `β_s`: Schmidt inverse (`-`), `h`: Flow depth (`m`) |
+| **Suspension Advection–Diffusion** | `ε_s(z) · (dC / dz) + w_s · C(z) = 0` | `C(z)`: Volumetric concentration (`-`), `w_s`: Terminal particle settling velocity (`m/s`) |
+| **Rouse Analytical Profile** | `C(z) / C_a = [ ((h - z) / z) · (a / (h - a)) ]^Ro` | `Ro = w_s / (β_s · κ · u*)`: Dimensionless Rouse number (`-`), `a`: Reference level (`m`) |
+| **Macroscopic Suspended Flux** | `q_ss = ∫ₐʰ u(z) · C(z) dz` | `q_ss`: Depth-integrated volumetric suspended sediment transport rate (`m²/s`) |
 
-  $$
-  z_{b,i}^{n+1} = \frac{1}{2}\left[z_{b,i}^n + z_{b,i}^* - \frac{M_f \Delta t}{(1 - \lambda_p) \Delta x} \left(q_{b,i}^* - q_{b,i-1}^*\right)\right] + D_i^*
-  $$
+---
 
-* **Courant-Friedrichs-Lewy (CFL) Adaptive Time-Step Constraint:**
-  
+### II. Meso-Scale (`Exner Morphodynamics`)
 
-  $$
-  \Delta t = \text{CFL} \cdot \frac{\Delta x}{\max_i \left(\vert{}u_i\vert{} + \sqrt{g h_i},\, c_{m,i}\right)}
-  $$
+| Physical Mechanism | Governing Formulation | Key Variables & SI Units |
+| :--- | :--- | :--- |
+| **Saint-Venant Continuity** | `∂h/∂t + ∂(h·u)/∂x = 0` | `h`: Water depth (`m`), `u`: Depth-averaged velocity (`m/s`), `t`: Time (`s`), `x`: Streamwise coordinate (`m`) |
+| **Saint-Venant Momentum** | `∂(h·u)/∂t + ∂(h·u² + ½·g·h²)/∂x = g·h·(S₀ - S_f)` | `g`: Gravity (`m/s²`), `S₀ = -∂z_b/∂x`: Bed slope (`-`), `S_f = (n²·u·\|u\|) / h^(4/3)`: Friction slope (`-`) |
+| **Shields Parameter** | `θ = τ_b / [ (ρ_s - ρ_w) · g · d₅₀ ]` | `τ_b = ρ_w·g·h·S_f`: Basal shear (`Pa`), `ρ_s, ρ_w`: Sediment/water density (`kg/m³`), `d₅₀`: Median grain (`m`) |
+| **Meyer-Peter & Müller Flux** | `q_b = α_mpm · √((s - 1)·g·d₅₀³) · max(0, θ - θ_c)^β_mpm` | `q_b`: Volumetric bedload (`m²/s`), `s = ρ_s/ρ_w`, `θ_c`: Critical Shields (`-`), `α_mpm, β_mpm`: MPM constants |
+| **Exner Conservation PDE** | `(1 - λ_p) · (∂z_b / ∂t) + M_f · (∂q_b / ∂x) = 0` | `z_b`: Bed elevation (`m`), `λ_p`: Bed porosity (`-`), `M_f`: Morphological acceleration factor (`-`) |
+| **MacCormack Predictor** | `z_b,i* = z_b,iⁿ - [ M_f · Δt / ((1 - λ_p)·Δx) ] · (q_b,i+1ⁿ - q_b,iⁿ)` | Forward finite-difference predictor step across spatial grid spacing `Δx` (`m`) |
+| **MacCormack Corrector** | `z_b,iⁿ⁺¹ = ½ · [ z_b,iⁿ + z_b,i* - [ M_f · Δt / ((1 - λ_p)·Δx) ] · (q_b,i* - q_b,i-1*) ] + D_art` | Backward finite-difference corrector step with symmetric TVD artificial viscosity `D_art` |
+| **CFL Stability Criterion** | `Δt = CFL · Δx / max( \|u\| + √(g·h), c_m )` | `CFL`: Courant number (`≤ 1`), `c_m`: Bedform celerity (`m/s`), `Δt`: Stable time step (`s`) |
 
-### Scale III: Macro-Scale — MorphoTensor Engine
+---
 
-Models hyper-concentrated mudflows and viscoplastic debris flows where water and granular solids behave as a single non-Newtonian continuum.
+### III. Macro-Scale (`MorphoTensor` 3D Rheology)
 
-#### Sequential 6-Submodule Pipeline:
+| Physical Mechanism | Governing Formulation | Key Variables & SI Units |
+| :--- | :--- | :--- |
+| **Herschel–Bulkley Law** | `τ = τ_y + K · (γ̇)^n_r` &nbsp;(for `\|τ\| > τ_y`) | `τ_y`: Yield stress (`Pa`), `K`: Consistency index (`Pa·sⁿ`), `n_r`: Rheological index (`-`), `γ̇`: Shear rate (`s⁻¹`) |
+| **3D Cauchy Stress Tensor** | `σ_ij = -p · δ_ij + 2 · η_eff(II_D) · D_ij` | `p`: Isotropic pressure (`Pa`), `δ_ij`: Kronecker delta, `D_ij = ½(∂u_i/∂x_j + ∂u_j/∂x_i)`: Strain-rate tensor |
+| **Regularized Viscosity** | `η_eff = K · \|II_D\|^((n_r - 1)/2) + τ_y / (2·√\|II_D\| + ε_reg)` | `II_D = ½(D_ij · D_ij)`: Second invariant of strain rate (`s⁻²`), `ε_reg`: Papanastasiou regularizer (`s⁻¹`) |
+| **Yield-Surface Plug Depth** | `h_p = τ_y / (ρ_m · g · sin α)` | `h_p`: Rigid plug-flow thickness (`m`), `ρ_m`: Mixture density (`kg/m³`), `α`: Local terrain inclination (`rad`) |
 
-* **Sub-module 3.1: Mixture Rheology Configurator** — Parameterizes bulk mixture density, yield stress $\tau_y$, consistency index $K$, and flow behavior index $m$.
-
-* **Sub-module 3.2: 3D Stress Tensor Generator** — Evaluates the rate-of-strain tensor $S_{ij}$ and partitions yielding vs. unyielded deviatoric stress components.
-
-* **Sub-module 3.3: Non-Newtonian Flux Router** — Computes 3D mass and momentum flux divergence across hexahedral finite-volume cells.
-
-* **Sub-module 3.4: Transverse Gravity-Shear Coupler** — Resolves lateral spreading and topographic slope forcing across $(x, y, z)$.
-
-* **Sub-module 3.5: Yield-Surface Tracker** — Identifies the kinematic interface $h_p$ separating the rigid upper plug-flow region from the basal shear zone.
-
-* **Sub-module 3.6: 3D Morphological Updater** — Executes vectorized multi-dimensional stencil updates for bed and free-surface evolution.
-
-#### Governing Formulations:
-
-* **Cauchy Momentum Conservation in Tensor Form:**
-  
-
-  $$
-  \rho_m \left(\frac{\partial u_i}{\partial t} + u_j \frac{\partial u_i}{\partial x_j}\right) = -\frac{\partial p}{\partial x_i} + \rho_m g_i + \frac{\partial \tau_{ij}}{\partial x_j}
-  $$
-
-* **Herschel-Bulkley / Bingham Constitutive Stress Tensor:**
-  
-
-  $$
-  \tau_{ij} = 2 \left(K \, \dot{\gamma}^{m-1} + \frac{\tau_y}{\dot{\gamma}}\right) S_{ij} \quad \text{for } \sqrt{\frac{1}{2}\tau_{kl}\tau_{kl}} > \tau_y, \qquad S_{ij} = \frac{1}{2}\left(\frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i}\right)
-  $$
-
-* **3D Finite-Volume Divergence Formulation:**
-  
-
-  $$
-  (1 - \lambda_p) \frac{\partial \eta}{\partial t} + \frac{\partial q^i}{\partial x_i} = 0 \implies \eta_{i,j,k}^{n+1} = \eta_{i,j,k}^n - \frac{\Delta t}{(1 - \lambda_p)\Delta x \Delta y} \sum_{\text{faces}} \left(\mathbf{q}_{\text{face}} \cdot \mathbf{n}\right)
-  $$
-
+---
 ## 4. Repository Structure
 
 ```
