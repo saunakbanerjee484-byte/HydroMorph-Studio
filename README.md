@@ -1,10 +1,3 @@
-🌊 HydroMorph-Studio (`HydroMorph-Analytics`)
-
-**Commercial-Grade Multi-Scale Sediment Transport, Exner Morphodynamics & 3D Non-Newtonian Rheology Workstation**
-
-`HydroMorph-Studio` is a decoupled, local-first computational hydroinformatics suite engineered for high-precision river mechanics and debris-flow simulation. Designed to execute seamlessly on constrained hardware (**Intel Core i3 / 8GB RAM**), the engine enforces a strict **0-Loop Spatial Vectorization Policy** using contiguous NumPy/SciPy array broadcasting, a resilient Streamlit Glassmorphic UI (`frontend/app.py`), and an asynchronous FastAPI compute backend (`127.0.0.1:8000`) with automatic in-process fallback.
-
----
 
 ## 🏗️ System Architecture & Multi-Scale Pipelines
 
