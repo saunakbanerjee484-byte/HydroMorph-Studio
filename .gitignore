@@ -1,0 +1,19 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Simulation state outputs & large binary tensors
+*.parquet
+*.h5
+*.zip
+
+# IDE & OS files
+.vscode/
+.DS_Store
+Thumbs.db
