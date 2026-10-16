@@ -154,14 +154,6 @@ restores the inputs and renders the results without any solver call. The meso pa
 
 ## Adding a model
 Subclass `SubModule`/`BaseModel` in `backend/engines/`, register in `backend/api_registry.py`, add a view in `frontend/views/`, and one line in `frontend/registry.py`.
-# HydroMorph-Studio
-
-**A Commercial-Grade, Multi-Scale Sediment Transport, Fluvial Morphodynamics, and Non-Newtonian Rheology Suite**
-
-## 1. Executive Overview
-
-**HydroMorph-Studio** (formerly *HydroMorph-Analytics*) is a deterministic hydroinformatics workstation engineered from first-principles continuum mechanics and tensor calculus. Unlike black-box empirical calculators, this suite bridges three distinct physical scales of sediment mechanics within a unified, modular architecture:
-
 1. **Micro-Scale (`Benthic-Boundary Engine`):** 1D vertical boundary-layer kinematics, viscous sublayer diagnostics, turbulent burst entrainment, and analytical/numerical Rouse suspension profiling.
 
 2. **Meso-Scale (`Exner Morphodynamics Engine`):** Coupled 1D Saint-Venant shallow-water hydrodynamics, bedload transport capacity, shock-capturing MacCormack bed evolution, and Courant-Friedrichs-Lewy (CFL) stability management.
