@@ -203,36 +203,43 @@ Resolves the vertical equilibrium between downward gravitational settling and up
 
 #### Governing Formulations
 
-* **Shear Velocity & Viscous Sublayer Thickness:**
+* **Shear Velocity & Viscous Sublayer Thickness**
 
   $$
-  u_* = \sqrt{\frac{\tau_b}{\rho_w}}, \qquad \delta_v = 11.6 \frac{\nu}{u_*}, \qquad Re_* = \frac{u_* k_s}{\nu}
+  u_* = \sqrt{\frac{\tau_b}{\rho_w}}, \qquad
+  \delta_v = 11.6\,\frac{\nu}{u_*}, \qquad
+  Re_* = \frac{u_* k_s}{\nu}
   $$
 
-* **Prandtl-von Kármán Law of the Wall:**
+* **Prandtl–von Kármán Law of the Wall**
 
   $$
-  u(z) = \frac{u_*}{\kappa} \ln\left(\frac{z}{z_0}\right)
+  u(z) = \frac{u_*}{\kappa}\,\ln\!\left(\frac{z}{z_0}\right)
   $$
 
-* **Garcia-Parker Entrainment & Reference Concentration ($z = a = 0.05h$):**
+* **Garcia–Parker Entrainment & Reference Concentration** ($z = a = 0.05h$)
 
   $$
-  R_p = \frac{\sqrt{R_g g d_{50}}\, d_{50}}{\nu}, \qquad Z_u = \frac{u_*}{w_s} R_p^{0.6}, \qquad C_a = E_s = \frac{A Z_u^5}{1 + \frac{A}{0.3} Z_u^5}
+  R_p = \frac{\sqrt{R_g\, g\, d_{50}}\, d_{50}}{\nu}, \qquad
+  Z_u = \frac{u_*}{w_s}\,R_p^{0.6}, \qquad
+  C_a = E_s = \frac{A Z_u^5}{1 + \frac{A}{0.3}\,Z_u^5}
   $$
 
-  where $A = 1.3 \times 10^{-7}$ and $R_g = (\rho_s - \rho_w)/\rho_w$. This implementation uses the total shear velocity $u_*$ in $Z_u$ under a *flat-bed / plane-bed assumption ($u_*' = u_*$, negligible bedform drag)*.
+  where $A = 1.3 \times 10^{-7}$ and $R_g = (\rho_s - \rho_w)/\rho_w$. This implementation uses the total shear velocity $u_*$ in $Z_u$ under a *flat-bed / plane-bed assumption* ($u_*' = u_*$, negligible bedform drag).
 
-* **Parabolic Turbulent Diffusivity & Advection-Diffusion Balance:**
-
-  $$
-  \varepsilon_s(z) = \kappa u_* z \left(1 - \frac{z}{h}\right), \qquad w_s C(z) + \varepsilon_s(z) \frac{dC}{dz} = 0
-  $$
-
-* **Rouse Analytical Suspension Profile & Depth-Integrated Flux:**
+* **Parabolic Turbulent Diffusivity & Advection–Diffusion Balance**
 
   $$
-  \frac{C(z)}{C_a} = \left(\frac{h - z}{z} \cdot \frac{a}{h - a}\right)^{Ro}, \qquad Ro = \frac{w_s}{\kappa u_*}, \qquad q_{ss} = \int_{a}^{h} u(z) C(z)\, dz
+  \varepsilon_s(z) = \kappa\, u_*\, z \left(1 - \frac{z}{h}\right), \qquad
+  w_s\, C(z) + \varepsilon_s(z)\,\frac{dC}{dz} = 0
+  $$
+
+* **Rouse Analytical Suspension Profile & Depth-Integrated Flux**
+
+  $$
+  \frac{C(z)}{C_a} = \left(\frac{h-z}{z}\cdot\frac{a}{h-a}\right)^{Ro}, \qquad
+  Ro = \frac{w_s}{\kappa\, u_*}, \qquad
+  q_{ss} = \int_{a}^{h} u(z)\,C(z)\,dz
   $$
 
 ### Scale II: Meso-Scale — Exner Morphodynamics Engine
