@@ -1,16 +1,76 @@
+<div align="center">
+
 # HydroMorph-Studio
 
-**A Commercial-Grade, Multi-Scale Sediment Transport, Fluvial Morphodynamics, and Non-Newtonian Rheology Suite**
+### Commercial-Grade Multi-Scale Sediment Transport, Fluvial Morphodynamics & Non-Newtonian Rheology
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![NumPy](https://img.shields.io/badge/Compute-NumPy-013243?logo=numpy&logoColor=white)](https://numpy.org/)
+[![License](https://img.shields.io/badge/Status-Research%20Prototype-7C3AED)](#10-author--license)
+
+*A deterministic hydroinformatics workstation bridging micro-scale boundary-layer physics, meso-scale riverbed morphodynamics, and macro-scale debris-flow rheology — engineered from first principles.*
+
+[Overview](#1-executive-overview) · [Screenshots](#screenshots) · [Architecture](#3-multi-scale-physics-architecture--governing-equations) · [Equations](#4-governing-continuum-equations) · [Quick Start](#7-installation--execution) · [Repository](#5-repository-structure)
+
+</div>
+
+---
+
+## At a Glance
+
+| | Micro | Meso | Macro |
+| :--- | :--- | :--- | :--- |
+| **Engine** | `Benthic-Boundary` | `Exner Morphodynamics` | `MorphoTensor` |
+| **Physics** | Boundary layer, settling, Rouse suspension | Saint-Venant + Exner bed evolution | Herschel–Bulkley / Bingham rheology |
+| **Domain** | 1D vertical $z \in [a,h]$ | 1D longitudinal $x \in [0,L], t$ | 3D tensorial flow field |
+| **Pipeline** | 6 sequential sub-modules | 6 coupled sub-modules in time march | 6 dependency-ordered sub-modules |
+| **Key Output** | $u(z), C(z), q_{ss}$ | $h, u, z_b, \Delta z_b$, mass error | $\tau_{ij}, h_p$, yield/plastic zones |
+
+> [!TIP]
+> **Built for real hardware constraints.** HydroMorph-Studio is designed to run high-fidelity numerical simulations on baseline machines (**Intel Core i3, 8 GB RAM, no GPU**) with strict 0-loop spatial vectorization and machine-epsilon mass-conservation auditing.
+
+---
 
 ## 1. Executive Overview
 
-**HydroMorph-Studio** (formerly *HydroMorph-Analytics*) is a deterministic hydroinformatics workstation engineered from first-principles continuum mechanics and tensor calculus. Unlike black-box empirical calculators, this suite bridges three distinct physical scales of sediment mechanics within a unified, modular architecture:
+**HydroMorph-Studio** (formerly *HydroMorph-Analytics*) is a deterministic hydroinformatics workstation engineered from first-principles continuum mechanics and tensor calculus. Unlike black-box empirical calculators, it unifies three distinct physical scales of sediment mechanics in one modular architecture:
 
-1. **Micro-Scale (`Benthic-Boundary Engine`):** 1D vertical boundary-layer kinematics, viscous sublayer diagnostics, turbulent burst entrainment, and analytical/numerical Rouse suspension profiling.
-2. **Meso-Scale (`Exner Morphodynamics Engine`):** Coupled 1D Saint-Venant shallow-water hydrodynamics, bedload transport capacity, shock-capturing MacCormack bed evolution, and Courant-Friedrichs-Lewy (CFL) stability management.
-3. **Macro-Scale (`MorphoTensor Engine`):** 3D non-Newtonian hyper-concentrated debris flows, Bingham/Herschel-Bulkley viscoplastic stress tensors, yield-surface tracking, and multi-axial finite-volume routing.
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🔬 Micro-Scale
+**Benthic-Boundary Engine**
+
+1D vertical boundary-layer kinematics, viscous sublayer diagnostics, turbulent burst entrainment, and analytical/numerical Rouse suspension profiling.
+
+</td>
+<td width="33%" valign="top">
+
+### 🌊 Meso-Scale
+**Exner Morphodynamics Engine**
+
+Coupled 1D Saint-Venant shallow-water hydrodynamics, bedload transport capacity, shock-capturing MacCormack bed evolution, and CFL stability management.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧱 Macro-Scale
+**MorphoTensor Engine**
+
+3D non-Newtonian hyper-concentrated debris flows, Bingham/Herschel–Bulkley viscoplastic stress tensors, yield-surface tracking, and multi-axial routing.
+
+</td>
+</tr>
+</table>
+
+---
 
 ## Screenshots
+
+<div align="center">
 
 | Dashboard | Micro-Scale |
 | :---: | :---: |
@@ -20,8 +80,11 @@
 | :---: | :---: |
 | ![Meso-scale full view](docs/assets/meso-scale-full.png) | ![Macro-scale full view](docs/assets/macro-scale-full.png) |
 
+</div>
+
 <details>
-<summary>Additional plots and workspace views</summary>
+<summary><strong>📸 Additional plots and workspace views</strong></summary>
+<br/>
 
 | Micro plots | Meso plots |
 | :---: | :---: |
@@ -37,15 +100,21 @@
 
 </details>
 
+---
+
 ## 2. Core Engineering Philosophy & Hardware Optimization
 
-HydroMorph-Studio is explicitly architected to execute high-precision numerical simulations on baseline hardware (**Intel Core i3 CPU with 8 GB RAM**, zero GPU dependency) while preserving machine-epsilon mass conservation:
+HydroMorph-Studio is explicitly architected to execute high-precision numerical simulations on baseline hardware (**Intel Core i3 CPU with 8 GB RAM**, zero GPU dependency) while preserving machine-epsilon mass conservation.
 
-* **Strict 0-Loop Spatial Vectorization:** Python `for` loops over spatial grids are strictly prohibited. All spatial gradients, finite-volume fluxes, and numerical integrations utilize contiguous C-level NumPy array slicing, broadcasting, and SciPy ODE/quadrature routines. Outer loops are restricted exclusively to temporal integration ($t^n \rightarrow t^{n+1}$).
-* **Decoupled Fault-Tolerant Architecture:** A lightweight **Streamlit** frontend communicates with an asynchronous **FastAPI** compute server (`127.0.0.1:8000`). If the FastAPI server is offline, the frontend automatically falls back to an in-process execution engine without interrupting user workflow.
-* **Unbreakable Registry Pattern:** The entry point (`frontend/app.py`) is an immutable thin shell that dynamically resolves modules via `frontend/registry.py`. Adding or modifying physical engines never risks crashing the primary application.
-* **Columnar State-Space Persistence:** Simulation outputs and decimated space-time tensors are serialized into compressed binary **Apache Parquet** (`.parquet`) tables via `pyarrow` alongside JSON parameter manifests inside downloadable `.zip` archives, enabling zero-copy state restoration.
-* **WebGL Kinematic Offloading:** Transient morphological animations offload frame rendering directly to the browser's WebGL context using locked coordinate bounds (`fixedrange=True`), eliminating CPU re-layout bottlenecks during playback.
+| Principle | Implementation |
+| :--- | :--- |
+| **0-Loop Spatial Vectorization** | Python `for` loops over spatial grids are prohibited. Spatial gradients, finite-volume fluxes, and numerical integrations use contiguous NumPy slicing, broadcasting, `einsum`, and vectorized routines. Outer loops are restricted to temporal integration ($t^n \rightarrow t^{n+1}$). |
+| **Decoupled Fault-Tolerant Architecture** | A lightweight **Streamlit** frontend talks to an async **FastAPI** compute server (`127.0.0.1:8000`). If the API is offline, the UI falls back to in-process execution without interrupting workflow. |
+| **Unbreakable Registry Pattern** | `frontend/app.py` is a thin shell that resolves modules via `frontend/registry.py`. Adding/modifying engines does not require changing the app shell. |
+| **Columnar State-Space Persistence** | Outputs and decimated space-time tensors are serialized as compressed `.npz`/Parquet artifacts with JSON manifests inside downloadable `.zip` archives for zero-copy-style state restoration. |
+| **WebGL Kinematic Offloading** | Transient morphological animations offload frame rendering to the browser WebGL context with locked coordinate bounds (`fixedrange=True`), avoiding CPU relayout bottlenecks. |
+
+---
 
 ## 3. Multi-Scale Physics Architecture & Governing Equations
 
@@ -55,12 +124,14 @@ Resolves the vertical equilibrium between downward gravitational settling and up
 
 #### Sequential 6-Submodule Pipeline
 
-* **Sub-module 1.1: Near-Bed Kinematics** — Evaluates basal shear velocity and generates the logarithmic velocity profile.
-* **Sub-module 1.2: Viscous Sublayer Diagnostics** — Computes laminar sublayer thickness and classifies hydraulic roughness regimes via the grain Reynolds number.
-* **Sub-module 1.3: Particle Settling & Entrainment** — Computes terminal fall velocity and solves the Garcia-Parker near-bed reference concentration $C_a$.
-* **Sub-module 1.4: Turbulent Eddy Diffusivity Solver** — Constructs the vertical parabolic momentum/mass diffusivity distribution under the Reynolds analogy.
-* **Sub-module 1.5: Suspension ODE Integrator** — Solves the 1D steady-state advection-diffusion ordinary differential equation alongside the exact analytical Rouse profile.
-* **Sub-module 1.6: Macroscopic Flux Aggregator** — Performs vectorized numerical quadrature over the product of velocity and concentration fields.
+| Sub-module | Responsibility |
+| :--- | :--- |
+| **1.1 Near-Bed Kinematics** | Evaluates basal shear velocity and generates the logarithmic velocity profile. |
+| **1.2 Viscous Sublayer Diagnostics** | Computes laminar sublayer thickness and classifies hydraulic roughness regimes via grain Reynolds number. |
+| **1.3 Particle Settling & Entrainment** | Computes terminal fall velocity and solves Garcia–Parker near-bed reference concentration $C_a$. |
+| **1.4 Turbulent Eddy Diffusivity Solver** | Constructs vertical parabolic momentum/mass diffusivity distribution under Reynolds analogy. |
+| **1.5 Suspension ODE Integrator** | Solves steady 1D advection–diffusion ODE alongside the exact analytical Rouse profile. |
+| **1.6 Macroscopic Flux Aggregator** | Performs vectorized numerical quadrature over $u(z)C(z)$ for depth-integrated suspended flux. |
 
 #### Governing Formulations
 
@@ -109,12 +180,14 @@ Simulates longitudinal riverbed aggradation, degradation, and bedform migration 
 
 #### Sequential 6-Submodule Pipeline
 
-* **Sub-module 2.1: Hydrodynamic State Solver** — Evaluates quasi-steady 1D Saint-Venant depth, velocity, and free-surface elevation profiles.
-* **Sub-module 2.2: Boundary Condition Manager** — Enforces ghost-cell padding, upstream equilibrium sediment supply, and downstream stage conditions.
-* **Sub-module 2.3: Basal Shear & Transport Capacity Engine** — Computes local bed shear stress, dimensionless Shields stress, and Meyer-Peter Müller bedload flux.
-* **Sub-module 2.4: Bed-Evolution Divergence Solver** — Integrates the 1D Exner conservation law via a shock-capturing MacCormack predictor-corrector finite-volume scheme and audits relative mass-balance error down to $O(10^{-15})$.
-* **Sub-module 2.5: Morphological Stability Controller** — Dynamically regulates $\Delta t$ via hydraulic and morphological CFL criteria and applies the Morphological Acceleration Factor ($M_f$).
-* **Sub-module 2.6: State-Space Persister** — Decimates temporal frames for WebGL playback and packages `.parquet` state tensors into `.zip` bundles.
+| Sub-module | Responsibility |
+| :--- | :--- |
+| **2.1 Hydrodynamic State Solver** | Evaluates quasi-steady 1D Saint-Venant depth, velocity, and free-surface elevation profiles. |
+| **2.2 Boundary Condition Manager** | Enforces ghost-cell padding, upstream equilibrium sediment supply, and downstream stage conditions. |
+| **2.3 Basal Shear & Transport Capacity Engine** | Computes bed shear stress, dimensionless Shields stress, and Meyer-Peter Müller bedload flux. |
+| **2.4 Bed-Evolution Divergence Solver** | Integrates 1D Exner conservation via shock-capturing MacCormack predictor–corrector finite-volume scheme; audits relative mass-balance error. |
+| **2.5 Morphological Stability Controller** | Dynamically regulates $\Delta t$ via hydraulic/morphological CFL criteria and applies Morphological Acceleration Factor ($M_f$). |
+| **2.6 State-Space Persister** | Decimates temporal frames for WebGL playback and packages `.parquet`/state tensors into `.zip` bundles. |
 
 ### Scale III: Macro-Scale — MorphoTensor Engine (3D Debris & Mudflow Rheology)
 
@@ -122,12 +195,14 @@ Models hyperconcentrated non-Newtonian mudflows and yield-stress continuum mecha
 
 #### Sequential 6-Submodule Pipeline
 
-* **Sub-module 3.1 — Mixture Rheology Configurator:** Defines Bingham Plastic and Herschel–Bulkley yield stress ($\tau_y$), consistency ($K$), and power-law index ($n_r$).
-* **Sub-module 3.2 — 3D Stress Tensor Generator:** Partitions isotropic pressure and deviatoric viscous stress tensors ($\sigma_{ij}$) using regularized second invariants of the strain-rate tensor ($II_D$).
-* **Sub-module 3.3 — Non-Newtonian Flux Router:** Computes vectorized 3D mass and momentum flux divergence across variable topography.
-* **Sub-module 3.4 — Transverse Gravity–Shear Coupler:** Resolves bi-directional slope gravity driving forces against basal and internal shear resistance.
-* **Sub-module 3.5 — Yield-Surface Tracker:** Identifies the dynamic interface ($h_p$) separating the upper rigid plug-flow zone ($|\tau| \le \tau_y$) from the lower sheared zone ($|\tau| > \tau_y$).
-* **Sub-module 3.6 — 3D Morphological Updater:** Updates volumetric deposition and erosion fields across the macroscopic domain.
+| Sub-module | Responsibility |
+| :--- | :--- |
+| **3.1 Mixture Rheology Configurator** | Defines Bingham Plastic / Herschel–Bulkley yield stress ($\tau_y$), consistency ($K$), and flow index ($n_r$). |
+| **3.2 3D Stress Tensor Generator** | Partitions isotropic pressure and deviatoric viscous stress tensors ($\sigma_{ij}$) using regularized strain-rate invariants ($II_D$). |
+| **3.3 Non-Newtonian Flux Router** | Computes vectorized 3D mass and momentum flux divergence across variable topography. |
+| **3.4 Transverse Gravity–Shear Coupler** | Resolves bi-directional slope gravity driving forces against basal and internal shear resistance. |
+| **3.5 Yield-Surface Tracker** | Identifies dynamic interface ($h_p$) separating rigid plug-flow zone ($|\tau| \le \tau_y$) from sheared zone ($|\tau| > \tau_y$). |
+| **3.6 3D Morphological Updater** | Updates volumetric deposition and erosion fields across the macroscopic domain. |
 
 ---
 
@@ -173,52 +248,58 @@ Models hyperconcentrated non-Newtonian mudflows and yield-stress continuum mecha
 
 ```text
 HydroMorph-Studio/
-│
-├── frontend/
-│   ├── app.py                              # Fault-tolerant Streamlit entry shell
-│   ├── registry.py                         # Central model dictionary & lazy-loading router
+├── frontend/                           # Streamlit UI (thin shell + views/components)
+│   ├── app.py                          # Fault-tolerant entry shell
+│   ├── registry.py                     # Central model dictionary & lazy-loading router
 │   ├── components/
-│   │   ├── api_client.py                   # FastAPI HTTP client with in-process fallback
-│   │   ├── persistence.py                  # State snapshot/restore utilities
-│   │   ├── plots.py                        # Plotly styling & scientific plotting helpers
-│   │   ├── theme.py                        # UI theme/CSS injection
-│   │   └── workflow.py                     # Shared input/render/workflow helpers
+│   │   ├── api_client.py               # FastAPI HTTP client with in-process fallback
+│   │   ├── persistence.py              # State snapshot/restore utilities
+│   │   ├── plots.py                    # Plotly styling & scientific plotting helpers
+│   │   ├── theme.py                    # UI theme/CSS injection
+│   │   └── workflow.py                 # Shared input/render/workflow helpers
 │   └── views/
-│       ├── view_micro_benthic.py           # Micro-Scale UI
-│       ├── view_meso_exner.py              # Meso-Scale UI (WebGL animation/export)
-│       └── view_macro_tensor.py            # Macro-Scale UI
+│       ├── view_micro_benthic.py       # Micro-Scale UI
+│       ├── view_meso_exner.py          # Meso-Scale UI (WebGL animation/export)
+│       └── view_macro_tensor.py        # Macro-Scale UI
 │
-├── core/
-│   ├── base_model.py                       # SubModule/BaseModel contracts, validation, packing
-│   └── physics_constants.py                # Default physical constants exposed as inputs
+├── core/                               # Shared contracts and physics defaults
+│   ├── base_model.py                   # SubModule/BaseModel contracts, validation, packing
+│   └── physics_constants.py            # Default physical constants exposed as inputs
 │
-├── backend/
-│   ├── main.py                             # FastAPI application server
-│   ├── api_registry.py                     # Model registry & /api routes
+├── backend/                            # FastAPI compute layer
+│   ├── main.py                         # FastAPI application server
+│   ├── api_registry.py                 # Model registry & /api routes
 │   └── engines/
-│       ├── micro_engine.py                 # Sub-modules 1.1–1.6 (vectorized 1D vertical)
-│       ├── meso_engine.py                  # Sub-modules 2.1–2.6 (MacCormack/Exner time march)
-│       └── macro_engine.py                 # Sub-modules 3.1–3.6 (3D rheology/tensor pipeline)
+│       ├── micro_engine.py             # Sub-modules 1.1–1.6 (vectorized 1D vertical)
+│       ├── meso_engine.py              # Sub-modules 2.1–2.6 (MacCormack/Exner time march)
+│       └── macro_engine.py             # Sub-modules 3.1–3.6 (3D rheology/tensor pipeline)
 │
+├── docs/assets/                        # README screenshots and visual assets
 ├── requirements.txt
-├── run_hydromorph.py
+├── run_hydromorph.py                   # Unified launcher
 ├── start_studio.bat
 └── README.md
 ```
 
+---
+
 ## 6. UI/UX & Visualization Standards
 
-* **Pink & Blue Glassmorphism:** Frosted translucent containers (`backdrop-filter: blur(12px)`), soft radial gradients, and fully transparent Plotly canvases (`paper_bgcolor='rgba(0,0,0,0)'`, `plot_bgcolor='rgba(0,0,0,0)'`).
-* **Zero-Slider Policy & Explicit SI Units:** Sliders (`st.slider`) are strictly banned to prevent accidental continuous re-computation. Every parameter uses `st.number_input` with explicit SI units in the label and zero hardcoded physical constants.
-* **Instant Physical Validation & Confirmation Gate:** Out-of-bounds physical values trigger immediate blocking `st.error()` alerts. Simulations execute strictly upon clicking **Confirm Inputs & Execute**.
-* **Engineering Graph Formatting:** Log-scale axes enforce power-of-ten scientific notation ($10^{-4}, 10^{-3}$), initial-vs-final bed comparisons feature volumetric `fill='tonexty'` shading, and state export tools are housed inside a dedicated **Session Management** container.
+| Standard | Details |
+| :--- | :--- |
+| **Glassmorphism UI** | Frosted translucent containers (`backdrop-filter: blur(12px)`), soft radial gradients, and transparent Plotly canvases (`paper_bgcolor='rgba(0,0,0,0)'`, `plot_bgcolor='rgba(0,0,0,0)'`). |
+| **Zero-Slider Policy** | `st.slider` is avoided for simulation inputs; parameters use `st.number_input` with explicit SI units and no hardcoded physical constants. |
+| **Validation Gate** | Out-of-bounds physical values trigger immediate blocking errors. Simulations execute only on **Confirm Inputs & Execute**. |
+| **Engineering Plots** | Scientific log formatting, locked animation axes, volumetric `fill='tonexty'` comparisons, and dedicated Session Management export controls. |
+
+---
 
 ## 7. Installation & Execution
 
 ### Prerequisites
 
-* Python $3.10+$
-* Git
+- **Python** 3.10+
+- **Git**
 
 ### 1. Clone the Repository
 
@@ -233,7 +314,9 @@ cd HydroMorph-Studio
 # Windows (PowerShell)
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
 
+```bash
 # Linux / macOS
 python3 -m venv .venv
 source .venv/bin/activate
@@ -247,46 +330,73 @@ pip install -r requirements.txt
 
 ### 4. Launch the Suite
 
-**Option A: Full Decoupled Mode (FastAPI Backend + Streamlit Frontend)**
+<details open>
+<summary><strong>Option A — Full Decoupled Mode (Recommended)</strong></summary>
 
-Open two terminals from the project root:
-
-*Terminal 1 — Start the FastAPI Compute Engine:*
-
+**Terminal 1 — FastAPI Compute Engine**
 ```bash
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-*Terminal 2 — Start the Streamlit Workstation:*
+**Terminal 2 — Streamlit Workstation**
+```bash
+python -m streamlit run frontend/app.py
+```
+
+</details>
+
+<details>
+<summary><strong>Option B — Standalone In-Process Mode</strong></summary>
 
 ```bash
 python -m streamlit run frontend/app.py
 ```
 
-**Option B: Standalone In-Process Mode**
+The UI detects that port `8000` is offline and executes vectorized NumPy pipelines in-process.
 
-Simply launch the Streamlit app; it will automatically detect that port `8000` is offline and execute all vectorized NumPy/SciPy pipelines directly in-process:
+</details>
 
-```bash
-python -m streamlit run frontend/app.py
-```
-
-**Option C: Unified Launcher**
+<details>
+<summary><strong>Option C — Unified Launcher</strong></summary>
 
 ```bash
 python run_hydromorph.py
 ```
 
+</details>
+
+---
+
 ## 8. Numerical Notes and Limits
 
-* **Meso:** MacCormack with Jameson-type smoothing; Riemann-invariant ghost cells; subcritical flow only (Fr < 0.95); rating-curve outflow. Exner is a finite-volume Forward Euler update with upwind face fluxes and MPM capacity; dynamic MorFac caps bed change per step. Sediment mass error is reported.
-* **Macro:** Steady uniform flow with a local-depth approximation. The tangential-gravity direction fixes the shear-stress direction, so a cross-slope drives lateral flow (wall blockage ignored); vertical velocity comes from continuity. The plug shears laterally, so yielding is detected from vertical shear. 3.6 is a scour-only excess-shear entrainment law, not a full topology solver.
-* **Micro:** $z_0 = 0.11\nu/u_* + k_s/30$ holds in all regimes; 1.2 classifies the regime from $Re_*$.
+> [!IMPORTANT]
+> These are the current model assumptions and stability boundaries. Respect them when interpreting results.
+
+- **Micro:** $z_0 = 0.11\nu/u_* + k_s/30$ holds in all regimes; 1.2 classifies regime from $Re_*$. Garcia–Parker uses total $u_*$ under a flat-bed / plane-bed assumption ($u_*'=u_*$).
+- **Meso:** MacCormack with Jameson-type smoothing; Riemann-invariant ghost cells; **subcritical flow only** (Fr < 0.95); rating-curve outflow. Exner uses finite-volume Forward Euler with upwind face fluxes and MPM capacity; dynamic MorFac caps bed change per step. Sediment mass error is reported.
+- **Macro:** Steady uniform flow with local-depth approximation. Tangential-gravity direction fixes shear-stress direction, so cross-slope drives lateral flow (wall blockage ignored); vertical velocity comes from continuity. Plug shears laterally, so yielding is detected from vertical shear. 3.6 is a scour-only excess-shear entrainment law, not a full topology solver.
+
+---
 
 ## 9. Adding a Model
 
-Subclass `SubModule`/`BaseModel` in `backend/engines/`, register in `backend/api_registry.py`, add a view in `frontend/views/`, and add one line in `frontend/registry.py`.
+1. Subclass `SubModule` / `BaseModel` in `backend/engines/`.
+2. Register the engine in `backend/api_registry.py`.
+3. Add a view in `frontend/views/`.
+4. Add one entry in `frontend/registry.py`.
+
+> The registry pattern keeps `frontend/app.py` stable as the model catalog grows.
+
+---
 
 ## 10. Author & License
 
-Developed by **Saunak Banerjee** — Repository: [HydroMorph-Studio](https://github.com/saunakbanerjee484-byte/HydroMorph-Studio)
+<div align="center">
+
+**Developed by Saunak Banerjee**
+
+[![GitHub Repo](https://img.shields.io/badge/GitHub-HydroMorph--Studio-181717?logo=github&logoColor=white)](https://github.com/saunakbanerjee484-byte/HydroMorph-Studio)
+
+<sub>HydroMorph-Studio — deterministic, multi-scale sediment mechanics for engineering-grade exploration.</sub>
+
+</div>
